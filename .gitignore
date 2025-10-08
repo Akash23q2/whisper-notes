@@ -9,4 +9,4 @@ src
 frontend/
 # Virtual environments
 .venv
-*.ipynb
+
