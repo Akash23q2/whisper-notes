@@ -1,3 +1,4 @@
+## DEPENDENCY MANAGEMENT ##
 import importlib
 import subprocess
 import sys
@@ -5,7 +6,6 @@ import requests
 import os
 import re
 import unicodedata
-#imports
 
 dependencies = [
     'langchain',
@@ -19,7 +19,7 @@ dependencies = [
 def install_if_missing(package_name):
     try:
         importlib.import_module(package_name.replace("-", "_"))
-        print(f"✅ {package_name} is already installed.")
+        print(f" {package_name} is already installed.")
     except ImportError:
         print(f"⬇ Installing {package_name}...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", package_name])
@@ -27,7 +27,7 @@ def install_if_missing(package_name):
 if False:
     for dep in dependencies:install_if_missing(dep)
 
-print("\n🚀 All dependencies are ready to use!")
+print("\nAll dependencies are ready to use!")
 
 ##Imports ##
 from langchain.text_splitter import RecursiveCharacterTextSplitter

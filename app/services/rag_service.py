@@ -1,6 +1,9 @@
-#imports
-from app.models.rag_model import RagPipeline
+## imports ##
+from app.services.rag_pipeline import RagPipeline
+import re
+import unicodedata
 
+## methods ##
 def data_injestion(pdf_path=None,pdf_url=None,text_content=None,
                    collection_name="default_collection", chunks=None,chunksize=500,
                    chunk_overlap=50,batch_size=32,
@@ -29,9 +32,6 @@ def query_engine(rag_model:RagPipeline,query,collection_name="default_collection
     query_emb=rag_model.embedder.encode(rag_model._make_chunks(query)).tolist()
     results = collection.query(query_embeddings=query_emb,n_results=n_results)
     return _clean_documents_result(results) if pretty_print else results
-
-import re
-import unicodedata
 
 def clean_text_response(text: str) -> str:
     if not text or not isinstance(text, str):
