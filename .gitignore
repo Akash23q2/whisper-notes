@@ -10,3 +10,4 @@ frontend/
 # Virtual environments
 .venv
 
+*.ipynb

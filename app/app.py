@@ -1,10 +1,12 @@
 ##imports##
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends,FastAPI,APIRouter
-from app.services.auth_service import auth_router
+from app.routes.auth_routes import auth_router
+from app.routes.agent_routes import agent_router
 import uvicorn
 app=FastAPI()
 app.include_router(auth_router)
+app.include_router(agent_router)
 
 @app.get('/{user}')
 def greet(user: str, post: str | None = 'sucker'):
