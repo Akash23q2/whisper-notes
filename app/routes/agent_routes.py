@@ -1,6 +1,6 @@
 ## imports
 from app.schemas.response_schema import SessionInitRequest, MessageRequest, TopicSetRequest, QuizSubmissionRequest, UploadResourceRequest, WebSocketMessage
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -12,10 +12,10 @@ from app.services.agent_service import LearningAgentService
 from app.schemas.agent_schema import QuizResults, GameCharacters, Topics
 import os
 
-app = FastAPI(title="Gamified Learning Platform API")
+agent_router=APIRouter()
 
 # Add CORS middleware for WebSocket support
-app.add_middleware(
+agent_router.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
     allow_credentials=True,
@@ -72,7 +72,7 @@ manager = ConnectionManager()
 
 ## WEBSOCKET ENDPOINT
 
-@app.websocket("/ws/{session_id}")
+@agent_router.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
     """
     WebSocket endpoint for real-time communication
@@ -362,7 +362,7 @@ async def handle_get_progress(session_id: str, agent_service: LearningAgentServi
 
 ## REST API ENDPOINTS (for non-real-time operations)
 
-@app.post("/api/v1/session/create")
+@agent_router.post("/api/v1/session/create")
 async def create_session(request: SessionInitRequest):
     """Create a new learning session"""
     try:
@@ -387,7 +387,7 @@ async def create_session(request: SessionInitRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/session/{session_id}")
+@agent_router.get("/api/v1/session/{session_id}")
 async def get_session(session_id: str):
     """Get current session state"""
     if session_id not in active_sessions:
@@ -410,7 +410,7 @@ async def get_session(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/api/v1/session/{session_id}")
+@agent_router.delete("/api/v1/session/{session_id}")
 async def end_session(session_id: str):
     """End a learning session"""
     if session_id not in active_sessions:
@@ -440,7 +440,7 @@ async def end_session(session_id: str):
 
 
 ## RESOURCE UPLOAD ENDPOINTS (REST - file uploads)
-@app.post("/api/v1/resources/upload/pdf")
+@agent_router.post("/api/v1/resources/upload/pdf")
 async def upload_pdf(
     file: UploadFile = File(...),
     collection_name: str = Form(...),
@@ -505,7 +505,7 @@ async def upload_pdf(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/v1/resources/upload/text")
+@agent_router.post("/api/v1/resources/upload/text")
 async def upload_text(
     text_content: str = Form(...),
     collection_name: str = Form(...),
@@ -552,7 +552,7 @@ async def upload_text(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/v1/resources/upload/url")
+@agent_router.post("/api/v1/resources/upload/url")
 async def upload_url(
     pdf_url: str = Form(...),
     collection_name: str = Form(...),
@@ -599,7 +599,7 @@ async def upload_url(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/resources/collections")
+@agent_router.get("/api/v1/resources/collections")
 async def get_collections():
     """Get all available collections"""
     try:
@@ -614,7 +614,7 @@ async def get_collections():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/health")
+@agent_router.get("/api/v1/health")
 async def health_check():
     """Health check with connection statistics"""
     return {
