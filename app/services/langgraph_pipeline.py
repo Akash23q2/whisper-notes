@@ -1,5 +1,5 @@
 from langgraph.graph import StateGraph
-from app.services.ai_agents import planner_agent, quiz_agent, teacher_agent, mentor_agent, basic_agent, AgentState
+from app.services.agent_service import planner_agent, quiz_agent, teacher_agent, mentor_agent, basic_agent, AgentState
 from langgraph.graph import START, END, StateGraph
 workflow = StateGraph(AgentState)
 

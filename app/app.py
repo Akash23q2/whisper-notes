@@ -3,10 +3,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Depends,FastAPI,APIRouter
 from app.routes.auth_routes import auth_router
 from app.routes.agent_routes import agent_router
+from app.routes.rag_routes import rag_router
 import uvicorn
+
+##routes
 app=FastAPI()
 app.include_router(auth_router)
 app.include_router(agent_router)
+app.include_router(rag_router)
 
 @app.get('/{user}')
 def greet(user: str, post: str | None = 'sucker'):

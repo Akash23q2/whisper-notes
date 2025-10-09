@@ -42,8 +42,8 @@ class RagPipeline:
         self.chunks=None
         self.embeddings=None
         self.pages=1 #bydefault
-        self.embedder=None
-        self.client=None
+        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.client=chromadb.Client()
         
     def chunks_from_pdf(self,pdf_path:str,chunk_overlap:int=50):
         #make chunks from pdf file

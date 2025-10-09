@@ -3,19 +3,27 @@ from app.services.rag_pipeline import RagPipeline
 import re
 import unicodedata
 import chromadb
+
+rag_model=RagPipeline()
+global avilable_collections
+avilable_collections=[] #list of all collections avilable [{name:description}]
+
 ## methods ##
-def data_injestion(pdf_path=None,pdf_url=None,text_content=None,
-                   collection_name="default_collection", chunks=None,chunksize=500,
+def data_injestion(pdf_path:str=None,pdf_url:str=None,text_content:str=None,
+                   collection_name:str="default_collection",description:str="",
+                   chunks=None,chunksize:int=500,
                    chunk_overlap=50,batch_size=32,
                    embedding_model:str=None,
                    db_path:str=None):
+    def __init__():
+        avilable_collections.append({collection_name:"contains info about : "+description})
     rag_model=RagPipeline()
     if pdf_path:
-        rag_model.chunks_from_pdf(pdf_path,chunk_overlap=chunk_overlap)
+        rag_model.chunks_from_pdf(pdf_path,chunk_overlap=chunk_overlap,chunksize=chunksize)
     elif pdf_url:
-        rag_model.chunks_from_url(pdf_url,chunk_overlap=chunk_overlap)
+        rag_model.chunks_from_url(pdf_url,chunk_overlap=chunk_overlap,chunksize=chunksize)
     elif text_content:
-        rag_model.chunks_from_text(text_content,chunk_overlap=chunk_overlap)
+        rag_model.chunks_from_text(text_content,chunk_overlap=chunk_overlap,chunksize=chunksize)
     elif chunks:
         rag_model.chunks=chunks
     else:
@@ -24,11 +32,9 @@ def data_injestion(pdf_path=None,pdf_url=None,text_content=None,
     rag_model.make_embeddings(embedding_model=embedding_model,batch_size=batch_size)
     rag_model.save_embeddings(collection_name=collection_name,db_path=db_path)
     print(f"Data Ingestion completed. Total {len(rag_model.chunks)} chunks created.")
-    return rag_model
 
 def query_engine(query,collection_name="default_collection",pretty_print=True,
                  n_results=5,db_path=None):
-    rag_model=RagPipeline()
     rag_model.chunks_from_text(text_content=query)
     rag_model.make_embeddings()
     rag_model.client = chromadb.PersistentClient(path=db_path) if db_path else chromadb.Client()

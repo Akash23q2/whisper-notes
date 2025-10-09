@@ -36,6 +36,7 @@ class SearchResponse(BaseModel):
 @rag_router.post("/api/rag/add", status_code=201)
 async def add_document(
     collection_name: str = Form("learning_notes"),
+    description:str=Form('describe content'),
     text: Optional[str] = Form(None, description="Raw text to embed."),
     pdf_url: Optional[str] = Form(None, description="PDF URL to embed."),
     file: Optional[UploadFile] = File(None, description="Upload a file to embed.")
