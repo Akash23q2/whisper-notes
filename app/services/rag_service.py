@@ -2,7 +2,7 @@
 from app.services.rag_pipeline import RagPipeline
 import re
 import unicodedata
-
+import chromadb
 ## methods ##
 def data_injestion(pdf_path=None,pdf_url=None,text_content=None,
                    collection_name="default_collection", chunks=None,chunksize=500,
@@ -26,11 +26,14 @@ def data_injestion(pdf_path=None,pdf_url=None,text_content=None,
     print(f"Data Ingestion completed. Total {len(rag_model.chunks)} chunks created.")
     return rag_model
 
-def query_engine(rag_model:RagPipeline,query,collection_name="default_collection",pretty_print=True,
+def query_engine(query,collection_name="default_collection",pretty_print=True,
                  n_results=5,db_path=None):
-    collection = rag_model.client.get_or_create_collection(name=collection_name)
-    query_emb=rag_model.embedder.encode(rag_model._make_chunks(query)).tolist()
-    results = collection.query(query_embeddings=query_emb,n_results=n_results)
+    rag_model=RagPipeline()
+    rag_model.chunks_from_text(text_content=query)
+    rag_model.make_embeddings()
+    rag_model.client = chromadb.PersistentClient(path=db_path) if db_path else chromadb.Client()
+    collection = rag_model.client.get_collection(name=collection_name)
+    results = collection.query(query_embeddings=rag_model.embeddings,n_results=n_results)
     return _clean_documents_result(results) if pretty_print else results
 
 def clean_text_response(text: str) -> str:

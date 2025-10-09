@@ -38,7 +38,7 @@ import pdfplumber as pdf_tool
 
 ## RAG PIPELINE ##
 class RagPipeline:
-    def _init_(self):
+    def __init__(self):
         self.chunks=None
         self.embeddings=None
         self.pages=1 #bydefault
