@@ -2,7 +2,6 @@
 from app.schemas.response_schema import SessionInitRequest, MessageRequest, TopicSetRequest, QuizSubmissionRequest, UploadResourceRequest, WebSocketMessage
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import uuid
@@ -14,19 +13,10 @@ import os
 
 agent_router=APIRouter()
 
-# Add CORS middleware for WebSocket support
-agent_router.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Store active sessions and WebSocket connections
 active_sessions: Dict[str, dict] = {}
 active_websockets: Dict[str, WebSocket] = {}
-
 
 
 ## WEBSOCKET CONNECTION MANAGER
