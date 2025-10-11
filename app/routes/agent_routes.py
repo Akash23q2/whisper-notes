@@ -52,7 +52,7 @@ async def get_collections():
 
 
 @agent_router.post("/run")
-async def run_agent(request: AgentRequest):
+def run_agent(request: AgentRequest):
     """
     Execute agent in specified mode.
     
