@@ -1,8 +1,7 @@
 ## REQUEST/RESPONSE MODELS
 from pydantic import BaseModel
 from typing import List, Optional
-from app.schemas.agent_schema import QuizResults, GameCharacters
-
+from app.schemas.agent_schema import Quiz, GameCharacters
 class SessionInitRequest(BaseModel):
     user_query: str
     user_id: Optional[str] = None
@@ -21,7 +20,7 @@ class TopicSetRequest(BaseModel):
 
 class QuizSubmissionRequest(BaseModel):
     session_id: str
-    quiz_results: List[QuizResults]
+    quiz_results: List[Quiz]
 
 
 class UploadResourceRequest(BaseModel):
@@ -35,3 +34,13 @@ class WebSocketMessage(BaseModel):
     session_id: str
     data: dict
 
+class AgentRequest(BaseModel):
+    mode: str
+    topic: Optional[str] = None
+    query: Optional[str] = None
+
+class AgentResponse(BaseModel):
+    mode: str
+    result: str
+    summary: Optional[str] = None
+    available_collections: Optional[dict] = None

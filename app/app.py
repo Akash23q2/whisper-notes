@@ -14,7 +14,7 @@ app.include_router(agent_router)
 app.include_router(rag_router)
 
 # Add CORS middleware for WebSocket support
-agent_router.add_middleware(
+app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
     allow_credentials=True,

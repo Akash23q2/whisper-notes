@@ -6,7 +6,7 @@ import chromadb
 
 rag_model=RagPipeline()
 global avilable_collections
-avilable_collections=[] #list of all collections avilable [{name:description}]
+avilable_collections = {} #dictionary of collection name to description
 
 ## methods ##
 def data_injestion(pdf_path:str=None,pdf_url:str=None,text_content:str=None,
@@ -15,15 +15,18 @@ def data_injestion(pdf_path:str=None,pdf_url:str=None,text_content:str=None,
                    chunk_overlap=50,batch_size=32,
                    embedding_model:str=None,
                    db_path:str=None):
-    def __init__():
-        avilable_collections.append({collection_name:"contains info about : "+description})
+    global avilable_collections
+    if collection_name in avilable_collections:
+        raise ValueError(f"Collection name '{collection_name}' already exists. Please choose a different name.")
+    avilable_collections[collection_name]=description
+    print("🔍 Final available collections:", avilable_collections)
     rag_model=RagPipeline()
     if pdf_path:
-        rag_model.chunks_from_pdf(pdf_path,chunk_overlap=chunk_overlap,chunksize=chunksize)
+        rag_model.chunks_from_pdf(pdf_path,chunk_overlap=chunk_overlap)
     elif pdf_url:
-        rag_model.chunks_from_url(pdf_url,chunk_overlap=chunk_overlap,chunksize=chunksize)
+        rag_model.chunks_from_url(pdf_url,chunk_overlap=chunk_overlap)
     elif text_content:
-        rag_model.chunks_from_text(text_content,chunk_overlap=chunk_overlap,chunksize=chunksize)
+        rag_model.chunks_from_text(text_content,chunk_overlap=chunk_overlap)
     elif chunks:
         rag_model.chunks=chunks
     else:
