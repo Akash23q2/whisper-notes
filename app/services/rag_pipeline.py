@@ -96,7 +96,6 @@ class RagPipeline:
         
     def make_embeddings(self,batch_size:int=32,chunks:list=None,
                         embedding_model:str=None):
-        embedding_model=embedding_model if embedding_model else "all-MiniLM-L6-v2"
         # Load embedding model
         self.embedder = SentenceTransformer(embedding_model)
         #prepare the embeddings from the chunk
@@ -108,24 +107,41 @@ class RagPipeline:
             batch_embeddings = self.embedder.encode(batch).tolist()
             self.embeddings.extend(batch_embeddings)
         
-    def save_embeddings(self,collection_name:str='default_collection',embeddings:list[list]=None,
-                        db_path:str=None):
-        #save the embeddings for retrieval
-        self.client=chromadb.PersistentClient(path=db_path) if db_path else chromadb.Client()
-        if embeddings:
-            self.embeddings=embeddings
-        collection = self.client.get_or_create_collection(name=collection_name)
+    def save_embeddings(self, collection_name: str = 'default_collection', embeddings: list[list] = None,
+                        db_path: str = None, append: bool = True):
+        # Initialize Chroma client
+        self.client = chromadb.PersistentClient(path=db_path) if db_path else chromadb.Client()
         
-        #save to the vector_db
-        document_ids = [str(i) for i in range(len(self.chunks))]
-        metadatas = [{"page": i // (len(self.chunks))//self.pages} for i in range(len(self.chunks))]  # rough page mapping
+        if embeddings:
+            self.embeddings = embeddings
 
-        collection.add(
-            ids=document_ids,
-            documents=self.chunks,
-            embeddings=self.embeddings,
-            metadatas=metadatas
-        )
+        # Get or create collection
+        collection = self.client.get_or_create_collection(name=collection_name)
+
+        # Generate unique IDs for new documents
+        existing_count = collection.count() if append else 0
+        document_ids = [str(existing_count + i) for i in range(len(self.chunks))]
+
+        # Rough page mapping
+        metadatas = [{"page": i // max(1, len(self.chunks)//self.pages)} for i in range(len(self.chunks))]
+
+        # Add or replace embeddings
+        if append:
+            collection.add(
+                ids=document_ids,
+                documents=self.chunks,
+                embeddings=self.embeddings,
+                metadatas=metadatas
+            )
+        else:
+            # Overwrite the collection if append=False
+            collection.delete()  # Clear existing docs
+            collection.add(
+                ids=document_ids,
+                documents=self.chunks,
+                embeddings=self.embeddings,
+                metadatas=metadatas
+            )
         
     def retrieve(self,collection_name,query:str,n_results:int=10):
         collection = self.client.get_or_create_collection(name=collection_name)

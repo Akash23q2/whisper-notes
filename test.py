@@ -13,17 +13,17 @@
 import asyncio
 from pydantic_ai import Agent
 from pydantic_ai.models.google import GoogleModel
+from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openrouter import OpenRouterProvider
-from os import getenv  
+import os
 from dotenv import load_dotenv,find_dotenv
 load_dotenv(find_dotenv())
 
-model = GoogleModel(
-    # 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
-    'gemini-2.5-flash',
-    # provider=OpenRouterProvider(api_key=getenv("OPENROUTER_API_KEY")),
+model2=OpenAIChatModel(
+    'qwen/qwen2.5-vl-72b-instruct:free',
+    provider=OpenRouterProvider(api_key=os.getenv("OPENROUTER_API_KEY")),
 )
-agent = Agent(model)
+agent = Agent(model2)
 def add_context(ai:str="",query:str="hey there! hello world !") -> str:
     return f"context: ai: {ai}, query: {query}\n "
 context=""

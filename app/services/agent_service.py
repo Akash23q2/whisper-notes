@@ -1,46 +1,40 @@
-## Imports
+## Imports ##
 from typing import TypedDict, Annotated, Sequence, Literal, List, Optional
 from dataclasses import dataclass
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from datetime import datetime
-from app.schemas.agent_schema import AgentState,AgentMode
-from dataclasses import dataclass
-from app.services.rag_service import avilable_collections, RagPipeline
-rag_pipeline = RagPipeline()
+from app.schemas.agent_schema import AgentState, NotesState, TeachState, GameState, AgentMode
+from app.services.rag_service import avilable_collections, RagPipeline, data_injestion
 from ddgs import DDGS
-from app.services.rag_service import data_injestion
 import chromadb
 import os
 import asyncio
-from pydantic_ai import Agent
-from pydantic_ai.models.google import GoogleModel
 from dotenv import load_dotenv
-from app.schemas.agent_schema import Quiz, GameCharacters, Topics
 import json
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
+## Initialize RAG Pipeline ##
+rag_pipeline = RagPipeline()
 
-## Initialize ai-agent
-model = GoogleModel(
-    # 'cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
-    'gemini-2.5-flash',
-    # provider=OpenRouterProvider(api_key=getenv("OPENROUTER_API_KEY")),
-)
+## Initialize AI agent ##
+from pydantic_ai.models.google import GoogleModel
+
+model = GoogleModel('gemini-2.5-flash')
 agent = Agent(model)
 
-##Dependenices##
+## Dependencies ##
 @dataclass
 class SupportDependencies:
-    ## RAG Dependencies
+    ## RAG Dependencies ##
     def getPresentEmbeddingsInfo() -> str:
         result = []
         for key, value in avilable_collections.items():
             result.append(f"{key}: {value}\n")
         return "".join(result) if result else "No collections available in the database."
-    
+
     def getConversationSummary(query: str, n_results: int = 10) -> str:
         try:
             retrieved_text = retrieveFromEmbeddings(
@@ -56,16 +50,15 @@ class SupportDependencies:
             return retrieved_text
         except Exception as e:
             return f"Error getting conversation summary: {str(e)}"
-        
+
     def getCurrentDateTime() -> str:
         now = datetime.now()
         return f"Current date and time: {now.strftime('%Y-%m-%d %H:%M:%S')}"
 
-
-async def format_results_for_llm(results: list) -> str:
+## Utility Functions ##
+def format_results_for_llm(results: list) -> str:
     if not results:
         return "No search results found."
-    
     lines = []
     for item in results:
         title = item.get('title', '').strip()
@@ -74,13 +67,38 @@ async def format_results_for_llm(results: list) -> str:
         if title and body:
             formatted = f"[{date}] {title}\n{body}\n"
             lines.append(formatted)
-    
     return "\n".join(lines) if lines else "No valid results found."
 
-
-##Tools Definitions##
+## Tools Definitions ##
 @agent.tool
-async def retrieveFromEmbeddings(
+def queryAllEmbeddings(ctx: RunContext[SupportDependencies], query: str, n_results: int = 5) -> str:
+    """
+    Search all available embeddings, prioritizing current_session for memory recall.
+    If nothing relevant, fallback to web search.
+    """
+    try:
+        # Always try 'current_session' first
+        if 'current_session' in avilable_collections:
+            result = retrieveFromEmbeddings(ctx, collection_name='current_session', query=query, n_results=n_results)
+            if result and "No relevant" not in result and "Error" not in result:
+                return f"Answer from 'current_session':\n{result}"
+
+        # Then try all other embeddings
+        for collection_name in avilable_collections.keys():
+            if collection_name == 'current_session':
+                continue
+            result = retrieveFromEmbeddings(ctx, collection_name=collection_name, query=query, n_results=n_results)
+            if result and "No relevant" not in result and "Error" not in result:
+                return f"Answer from '{collection_name}' collection:\n{result}"
+        
+        # fallback to web search
+        web_result = searchWebTool(ctx, query=query, max_results=n_results)
+        return f"No relevant embedding found. Fallback to web search:\n{web_result}"
+    except Exception as e:
+        return f"Error querying embeddings: {str(e)}"
+
+@agent.tool
+def retrieveFromEmbeddings(
     ctx: RunContext[SupportDependencies],
     collection_name: str,
     query: str,
@@ -90,31 +108,26 @@ async def retrieveFromEmbeddings(
     try:
         if db_path:
             rag_pipeline.client = chromadb.PersistentClient(path=db_path)
-        
-        results = await rag_pipeline.retrieve(
+        results = rag_pipeline.retrieve(
             collection_name=collection_name,
             query=query,
             n_results=n_results
         )
-        
         formatted_results = "\n\n---\n\n".join(results)
         return f"Retrieved {len(results)} relevant chunks:\n\n{formatted_results}"
     except Exception as e:
         return f"Error retrieving from embeddings: {str(e)}"
 
-
-## CONVERSATION MANAGEMENT TOOLS
 @agent.tool
-async def searchWebTool(ctx: RunContext[SupportDependencies], query: str, max_results: int = 5) -> str:
+def searchWebTool(ctx: RunContext[SupportDependencies], query: str, max_results: int = 5) -> str:
     try:
         results = DDGS().text(query, max_results=max_results)
-        return await format_results_for_llm(list(results))
+        return format_results_for_llm(list(results))
     except Exception as e:
         return f"Error performing web search: {str(e)}"
 
-
 @agent.tool
-async def logConversation(ctx: RunContext[SupportDependencies], user_message: str, ai_response: str) -> str:
+def logConversation(ctx: RunContext[SupportDependencies], user_message: str, ai_response: str) -> str:
     try:
         formatted_turn = f"User: {user_message}\nAI: {ai_response}\nTimestamp: {datetime.now().isoformat()}"
         data_injestion(
@@ -126,24 +139,18 @@ async def logConversation(ctx: RunContext[SupportDependencies], user_message: st
     except Exception as e:
         return f"Error logging conversation turn: {str(e)}"
 
-
-## UTILITY TOOLS
 @agent.tool
-async def calculateExpression(ctx: RunContext[SupportDependencies], expression: str) -> str:
+def calculateExpression(ctx: RunContext[SupportDependencies], expression: str) -> str:
     try:
-        allowed_names = {
-            'abs': abs, 'round': round, 'min': min, 'max': max,
-            'sum': sum, 'pow': pow
-        }
+        allowed_names = {'abs': abs, 'round': round, 'min': min, 'max': max, 'sum': sum, 'pow': pow}
         result = eval(expression, {"__builtins__": {}}, allowed_names)
         return f"Result: {result}"
     except Exception as e:
         return f"Error calculating expression: {str(e)}"
 
-
-## GAMIFICATION TOOLS
+## Gamification Tools ##
 @agent.tool
-async def generateQuizFromTopic(
+def generateQuizFromTopic(
     ctx: RunContext[SupportDependencies],
     topic: str,
     collection_name: str,
@@ -151,16 +158,9 @@ async def generateQuizFromTopic(
     difficulty: str = "medium"
 ) -> str:
     try:
-        context = await retrieveFromEmbeddings(
-            ctx,
-            collection_name=collection_name,
-            query=topic,
-            n_results=10
-        )
-        
+        context = retrieveFromEmbeddings(ctx, collection_name=collection_name, query=topic, n_results=10)
         if "Error" in context:
             return context
-        
         quiz_template = {
             "topic": topic,
             "difficulty": difficulty,
@@ -168,15 +168,13 @@ async def generateQuizFromTopic(
             "context": context[:1000],
             "instructions": f"Generate {num_questions} {difficulty} multiple-choice questions about {topic}"
         }
-        
         return json.dumps(quiz_template, indent=2)
     except Exception as e:
         return f"Error generating quiz: {str(e)}"
 
-
-## NPC CHARACTER TOOLS
+## NPC Character Tools ##
 @agent.tool
-async def generateNPCPersonality(ctx: RunContext[SupportDependencies], topic: str, teaching_style: str = "friendly") -> str:
+def generateNPCPersonality(ctx: RunContext[SupportDependencies], topic: str, teaching_style: str = "friendly") -> str:
     try:
         personality = {
             "topic": topic,
@@ -194,17 +192,24 @@ async def generateNPCPersonality(ctx: RunContext[SupportDependencies], topic: st
             "greeting_template": f"Hello! I'm here to help you master {topic}!",
             "teaching_approach": f"I specialize in {topic} and love to teach using {teaching_style} methods."
         }
-        
         return json.dumps(personality, indent=2)
     except Exception as e:
         return f"Error generating NPC personality: {str(e)}"
 
+## Prompts ##
+
+def get_memory_snippet(query_context: str = "", n_results: int = 10) -> str:
+    """
+    Retrieves relevant context from current_session embeddings.
+    Returns empty string if nothing is found.
+    """
+    memory = SupportDependencies.getConversationSummary(query=query_context, n_results=n_results)
+    if "No relevant" in memory or "Error" in memory:
+        return ""
+    return f"Relevant past conversation:\n{memory}\n"
 
 
-## Prompts for agent 
-
-def get_dynamic_prompt(mode: str, topic: str | None = None, query: str | None = None):
-    base_context = f"""
+base_context = f"""
 You are an intelligent educational assistant with access to a Retrieval-Augmented Generation (RAG) system.
 You can retrieve and reason over the following available collections:
 {SupportDependencies.getPresentEmbeddingsInfo()}
@@ -213,89 +218,99 @@ Use `retrieveFromEmbeddings` tool whenever you need more information.
 At the end, always use `logConversation` to record the session summary.
 """
 
-    query_context = f"\nUser asked: {query}" if query else ""
-
-    if mode == AgentMode.PLAN:
-        return f"""{base_context}
-
+def game_mode_prompt(query_context: str = ""):
+    memory = get_memory_snippet(query_context)
+    return f"""{base_context}
+{memory}
 ### Role: Learning Journey Planner
 Tasks:
 1. Analyze available RAG content.
 2. Extract key topics.
 3. Create engaging NPC characters and quiz questions.
-4. Return structured data with:
-   - topics, characters, quiz, summary.
-Create a quiz with 5 multiple-choice questions that:
-1. Test understanding of key concepts
-2. Range from basic recall to application
-3. Include 4 options each (A, B, C, D)
-4. Have clear, unambiguous correct answers
-5. Provide explanations for learning
-
+4. Return structured data with topics, characters, quiz, summary.
+Create a quiz with 5 multiple-choice questions:
+- Test understanding of key concepts
+- Range from basic recall to application
+- Include 4 options each (A, B, C, D)
+- Clear, unambiguous correct answers with explanations
 Be creative, fun, and clear.
 {query_context}
 """
 
-    elif mode == AgentMode.TEACH:
-        return f"""{base_context}
-
+def teach_topic_prompt(query_context: str = "", topic: str = "filters"):
+    memory = get_memory_snippet(query_context)
+    return f"""{base_context}
+{memory}
 ### Role: Interactive Teacher
-Your task is to:
-- Explain the topic '{topic}' in an engaging way.
-- Use retrieved RAG context to give examples and analogies.
-- Maintain a personality (based on topic mood — calm, excited, etc.)
-- Include step-by-step teaching with short explanations.
+Explain the topic '{topic}' in an engaging way.
+- Use retrieved RAG context and past conversation memory for examples.
+- Maintain personality (calm, excited, etc.).
+- Step-by-step teaching with short explanations.
 - End with a short recap and 5 self-check questions.
 {query_context}
 """
 
-    elif mode == AgentMode.NOTES:
-        return f"""{base_context}
-
+def notes_generate_prompt(query_context: str = "", topic: str = "filters"):
+    memory = get_memory_snippet(query_context)
+    return f"""{base_context}
+{memory}
 ### Role: Notes Generator
-Your task:
 - Retrieve content related to '{topic}'.
-- Summarize it into concise, easy-to-understand notes.
+- Include relevant past conversation context.
+- Summarize into concise, easy-to-understand notes.
 - Prefer structured bullet points or markdown sections.
 {query_context}
 """
 
-    elif mode == AgentMode.RAG:
-        return f"""{base_context}
-
-### Role: Knowledge Assistant
-Retrieve and answer any factual or conceptual question using RAG.
-Cite the relevant embedding collection in response.
+def rag_query_prompt(query_context: str = ""):
+    memory = get_memory_snippet(query_context)
+    return f"""{base_context}
+{memory}
+Retrieve and answer any factual or conceptual question:
+- First, check the `current_session` embedding for past conversation context.
+- Then, use the `queryAllEmbeddings` tool to find relevant info from all other embeddings.
+- If no relevant info is found in embeddings, use `searchWebTool`.
+- Always log the interaction using `logConversation`.
+- Cite the relevant embedding collection in your answer.
 {query_context}
 """
 
+
+
+## Unified Agent Run Function ##
+def run_agent_task(
+    mode: Literal['game', 'teach', 'notes', 'rag'],
+    query: str = "",
+    topic: str = "",
+    agent: Agent = agent
+):
+    ## Run agent based on mode ##
+    if mode == 'game':
+        result = agent.run_sync(
+            game_mode_prompt(query_context=query),
+            deps=SupportDependencies,
+            output_type=GameState
+        )
+    elif mode == 'teach':
+        result = agent.run_sync(
+            teach_topic_prompt(query_context=query, topic=topic),
+            deps=SupportDependencies,
+            output_type=TeachState
+        )
+    elif mode == 'notes':
+        result = agent.run_sync(
+            notes_generate_prompt(query_context=query, topic=topic),
+            deps=SupportDependencies,
+            output_type=NotesState
+        )
+    elif mode == 'rag':
+        result = agent.run_sync(
+            rag_query_prompt(query_context=query),
+            deps=SupportDependencies,
+            output_type=AgentState
+        )
     else:
         raise ValueError(f"Unknown mode: {mode}")
-  
     
-## Main function to run agent in different modes
-def run_agent_task(
-    mode: str, 
-    topic: str | None = None, 
-    query: str | None = None
-):
-    """
-    Unified function to run agent in different modes.
-    If `query` is provided, it will be injected into the prompt for
-    TEACH or RAG modes so the agent can answer questions directly.
-    """
-    # Generate dynamic prompt with optional query injection
-    prompt = get_dynamic_prompt(mode, topic, query)
-
-    # Run the agent with the generated prompt and initial empty state
-    result = agent.run_sync(
-        prompt + "\n\n" +
-        (query or topic or "Start session"),
-        deps=SupportDependencies,
-        output_type=AgentState
-
-    )
+    print(result.output)
     return result.output
-
-# if __name__ == "__main__":
-#     print(run_agent_task(mode=AgentMode.PLAN, query="I want to learn Python programming from scratch."))

@@ -1,86 +1,115 @@
+## Imports
 from fastapi import APIRouter, HTTPException
 from app.schemas.response_schema import AgentRequest, AgentResponse
-from app.services.agent_service import run_agent_task, SupportDependencies, avilable_collections
-from app.schemas.agent_schema import AgentMode
+from app.services.agent_service import (
+    run_agent_task,
+    AgentMode,
+    SupportDependencies,
+    avilable_collections,
+)
 
-# Create router
+## Router instance
 agent_router = APIRouter(prefix="/agent", tags=["AI Agent"])
 
+@agent_router.get("/")
+def root():
+    """Health check endpoint for the agent router."""
+    return {"message": "Agent router is active."}
 
-@agent_router.get("/ping")
-async def ping_agent():
-    """Health check for agent system."""
-    return {
-        "status": "active",
-        "collections_count": len(avilable_collections),
-        "timestamp": SupportDependencies.getCurrentDateTime()
-    }
+@agent_router.post("/run", response_model=AgentResponse)
+def run_agent(request: AgentRequest):
+    """
+    Run AI agent in the selected mode.
 
+    Modes:
+    - PLAN  : Generate learning journey, topics, NPCs, quizzes
+    - TEACH : Explain a topic interactively
+    - NOTES : Generate summarized notes
+    - RAG   : Retrieve and answer factual queries
+    """
+    try:
+        mode = request.mode.lower()
 
-@agent_router.get("/modes")
-async def get_agent_modes():
-    """Get all supported agent modes with descriptions."""
-    return {
-        "modes": [
-            {
-                "name": AgentMode.PLAN,
-                "description": "Plan a gamified learning journey with topics, NPCs, and quizzes"
-            },
-            {
-                "name": AgentMode.TEACH,
-                "description": "Interactive teaching with personality and examples"
-            },
-            {
-                "name": AgentMode.NOTES,
-                "description": "Generate structured notes using RAG context"
-            },
-            {
-                "name": AgentMode.RAG,
-                "description": "Answer questions using retrieved embeddings"
-            }
-        ]
-    }
+        # PLAN mode - learning journey planner
+        if mode == AgentMode.PLAN:
+            state_result = run_agent_task(
+                mode='game',
+                query=request.query
+            )
+            result: str = state_result.output  # extract string
+            return AgentResponse(
+                mode=AgentMode.PLAN,
+                result=result,
+                available_collections=avilable_collections
+            )
+
+        # TEACH mode - topic explanation
+        elif mode == AgentMode.TEACH:
+            if not request.topic:
+                raise HTTPException(status_code=400, detail="Topic is required for TEACH mode.")
+            state_result = run_agent_task(
+                mode='teach',
+                topic=request.topic,
+                query=request.query
+            )
+            result: str = state_result.output
+            return AgentResponse(
+                mode=AgentMode.TEACH,
+                result=result,
+                available_collections=avilable_collections
+            )
+
+        # NOTES mode - concise study notes
+        elif mode == AgentMode.NOTES:
+            if not request.topic:
+                raise HTTPException(status_code=400, detail="Topic is required for NOTES mode.")
+            state_result = run_agent_task(
+                mode='notes',
+                topic=request.topic,
+                query=request.query
+            )
+            result: str = state_result.output
+            return AgentResponse(
+                mode=AgentMode.NOTES,
+                result=result,
+                available_collections=avilable_collections
+            )
+
+        # RAG mode - retrieval-based Q&A
+        elif mode == AgentMode.RAG:
+            if not request.query:
+                raise HTTPException(status_code=400, detail="Query is required for RAG mode.")
+            state_result = run_agent_task(
+                mode='rag',
+                query=request.query
+            )
+            result: str = state_result.output
+            return AgentResponse(
+                mode=AgentMode.RAG,
+                result=result,
+                available_collections=avilable_collections
+            )
+
+        # Invalid mode
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid mode: {request.mode}")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Agent execution failed: {str(e)}")
 
 
 @agent_router.get("/collections")
-async def get_collections():
-    """Get all available RAG collections."""
-    return {
-        "collections": avilable_collections,
-        "info": SupportDependencies.getPresentEmbeddingsInfo()
-    }
-
-
-@agent_router.post("/run")
-def run_agent(request: AgentRequest):
-    """
-    Execute agent in specified mode.
-    
-    - **mode**: Agent operation mode (PLAN, TEACH, NOTES, RAG)
-    - **topic**: Topic for TEACH/NOTES modes (optional)
-    - **query**: Query for RAG mode or additional context (optional)
-    
-    Returns structured response based on mode:
-    - PLAN: Topics, characters, quiz, and learning context
-    - TEACH: Teaching content with examples and recap
-    - NOTES: Structured notes with key points
-    - RAG: Answer with sources and confidence
-    """
+def get_available_collections():
+    """Return all available RAG embedding collections."""
     try:
-        result =  run_agent_task(
-            mode=request.mode,
-            topic=request.topic,
-            query=request.query
-        )
-        
-        return {
-            "mode": request.mode,
-            "result": result,
-            "summary": f"Agent executed in {request.mode} mode",
-            "available_collections": avilable_collections
-        }
-        
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        if not avilable_collections:
+            return {"message": "No collections available."}
+        return {"available_collections": avilable_collections}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Agent execution failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching collections: {str(e)}")
+
+
+@agent_router.get("/time")
+def get_current_time():
+    """Return the current system date and time."""
+    return {"datetime": SupportDependencies.getCurrentDateTime()}
