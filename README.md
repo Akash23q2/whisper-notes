@@ -11,7 +11,7 @@ Ever wished your study notes could come alive and actually help you learn? That'
 *Here's how our AI agents work together to make your learning experience awesome! Think of it as a team of expert tutors working 24/7 just for you.*
 
 ### Your Learning Command Center 
-![Dashboard](src/2.png)
+![Dashboard](src/2.jpeg)
 *Welcome to your personalized learning space - clean, intuitive, and designed to help you focus on what matters most: learning!*
 
 ## 🌟 Features
