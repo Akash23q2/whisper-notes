@@ -1,10 +1,11 @@
-# /workspace/whisper-notes/whisper-notes-dev/app/routes/rag_routes.py
+##imports
 from fastapi import APIRouter, HTTPException, Form, UploadFile, File
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import logging
 from app.services.rag_pipeline import RagPipeline
 from app.services.rag_service import data_injestion,query_engine
+from app.schemas.response_schema import AddDocumentResponse, SearchRequest, SearchResponse, Document
 
 
 logging.basicConfig(level=logging.INFO)
@@ -12,26 +13,7 @@ logger = logging.getLogger(__name__)
 
 rag_router = APIRouter()
 
-# --- Pydantic Models ---
-
-class AddDocumentResponse(BaseModel):
-    document_ids: List[str]
-    message: str
-
-class SearchRequest(BaseModel):
-    query: str
-    collection_name: str = "learning_notes"
-    k: int = Field(4, gt=0, description="Number of documents to return")
-
-class Document(BaseModel):
-    page_content: str
-    metadata: Dict[str, Any]
-
-class SearchResponse(BaseModel):
-    query: str
-    results: List[Document]
-
-# --- API Endpoints ---
+## API Endpoints 
 
 @rag_router.post("/api/rag/add", status_code=201)
 async def add_document(
