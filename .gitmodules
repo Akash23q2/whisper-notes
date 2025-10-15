@@ -2,3 +2,7 @@
 	path = backend
 	url = https://github.com/Akash23q2/whisper-notes.git
 	branch = whisper-notes-backend
+[submodule "frontend"]
+	path = frontend
+	url = https://github.com/Akash23q2/whisperNotes-frontend
+	branch = main
