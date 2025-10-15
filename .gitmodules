@@ -1,0 +1,4 @@
+[submodule "backend"]
+	path = backend
+	url = https://github.com/Akash23q2/whisper-notes.git
+	branch = whisper-notes-backend
