@@ -7,23 +7,23 @@ Base = declarative_base()
 from typing import Any, Dict, List
 
 ## database engine and session ##
-from config import DATABASE_URL
+from app.config import DATABASE_URL
 engine = create_engine(DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 ## methods ##
 
-def create_tables():
+async def create_tables():
     """ Create all tables from Base metadata """
     Base.metadata.create_all(bind=engine)
     print("Tables created successfully.")
 
-def drop_tables():
+async def drop_tables():
     """ Drop all tables from Base metadata """
     Base.metadata.drop_all(bind=engine)
     print("Tables dropped successfully.")
 
-def get_db():
+async def get_db():
     """ Yield a database session """
     db = SessionLocal()
     try:
@@ -31,7 +31,7 @@ def get_db():
     finally:
         db.close()
 
-def add_record(record: Any):
+async def add_record(record: Any):
     """ Add a new record to database """
     db = SessionLocal()
     try:
@@ -46,7 +46,7 @@ def add_record(record: Any):
     finally:
         db.close()
 
-def get_record_by_id(model: Any, record_id: int):
+async def get_record_by_id(model: Any, record_id: int):
     """ Fetch a record by primary key id """
     db = SessionLocal()
     try:
@@ -57,7 +57,7 @@ def get_record_by_id(model: Any, record_id: int):
     finally:
         db.close()
 
-def delete_record_by_id(model: Any, record_id: int):
+async def delete_record_by_id(model: Any, record_id: int):
     """ Delete a record by primary key id """
     db = SessionLocal()
     try:
@@ -77,7 +77,7 @@ def delete_record_by_id(model: Any, record_id: int):
     finally:
         db.close()
 
-def query_records(model: Any, filters: Dict = None, limit: int = 10) -> List[Any]:
+async def query_records(model: Any, filters: Dict = None, limit: int = 10) -> List[Any]:
     """ Query records from a model with optional filters """
     db = SessionLocal()
     try:

@@ -35,6 +35,7 @@ class AgentMode(str):
     TEACH = "teach_topic"
     NOTES = "generate_notes"
     RAG = "rag_query"
+    TALK = "talk"
     
 ## Agent output schemas for different modes ##
 from pydantic import BaseModel
@@ -43,6 +44,9 @@ from typing import List, Dict
 ## Base state for generic RAG responses ##
 class AgentState(BaseModel):
     output: str
+
+class SummaryState(BaseModel):
+    summary: str
 
 ## Notes generator output ##
 class NotesState(BaseModel):

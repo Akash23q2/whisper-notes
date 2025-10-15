@@ -24,13 +24,13 @@ auth_router = APIRouter()
 
 ## signup route ##
 @auth_router.post("/signup", response_model=dict)
-async def signup(user: Annotated[SignUp,Depends()], db: Session = Depends(get_db)):
-    # check if username/email exists
+# async def signup(user: Annotated[SignUp,Depends()], db: Session = Depends(get_db)):
+async def signup(user: SignUp, db: Session = Depends(get_db)):    # check if username/email exists
     existing = db.query(Auth).filter(Auth.username==user.username).first()
     if existing:
         raise HTTPException(400, "Username already exists")
     
-    hashed_password = get_password_hash(user.password.get_secret_value())
+    hashed_password = await get_password_hash(user.password.get_secret_value())
     
     # Create User and Auth objects and link them
     new_user = User(
@@ -58,7 +58,7 @@ async def login_for_access_token(
     db: Session = Depends(get_db)
 ):
     # login endpoint to get JWT token
-    user = authenticate_user(db, form_data.username, form_data.password)
+    user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -68,7 +68,7 @@ async def login_for_access_token(
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     # The user object from authenticate_user is now a User model instance
     # We need the username from the related Auth model.
-    access_token = create_access_token(data={"sub": user.auth.username}, expires_delta=access_token_expires)
+    access_token = await create_access_token(data={"sub": user.auth.username}, expires_delta=access_token_expires)
     return Token(access_token=access_token, token_type="bearer")
 
 @auth_router.get("/users/me/", response_model=UserData)

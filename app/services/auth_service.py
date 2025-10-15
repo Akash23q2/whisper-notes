@@ -27,15 +27,15 @@ password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 ## methods ##
-def verify_password(plain_password, hashed_password):
+async def verify_password(plain_password, hashed_password):
     # verify plain password against hashed
     return password_hash.verify(plain_password, hashed_password)
 
-def get_password_hash(password):
+async def get_password_hash(password):
     # hash a password
     return password_hash.hash(password)
 
-def get_user_from_db(username: str, db: Session = Depends(get_db)):
+async def get_user_from_db(username: str, db: Session = Depends(get_db)):
     # fetch a user from database by username
     auth_record = db.query(Auth).filter(Auth.username == username).first()
     if auth_record and auth_record.user:
@@ -50,16 +50,16 @@ def get_user_from_db(username: str, db: Session = Depends(get_db)):
     return None
 
 
-def authenticate_user(db: Session, username: str, password: str):
+async def authenticate_user(db: Session, username: str, password: str):
     # authenticate user using real DB
     user_record = db.query(Auth).filter(Auth.username == username).first()
     if not user_record:
         return False
-    if not verify_password(password, user_record.password):
+    if not await verify_password(password, user_record.password):
         return False
     return user_record.user
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+async def create_access_token(data: dict, expires_delta: timedelta | None = None):
     # create JWT access token
     to_encode = data.copy()
     if expires_delta:
@@ -88,7 +88,7 @@ async def get_current_user(
     except InvalidTokenError:
         raise credentials_exception
 
-    user = get_user_from_db(username, db)
+    user = await get_user_from_db(username, db)
     if user is None:
         raise credentials_exception
     return user

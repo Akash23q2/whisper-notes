@@ -96,8 +96,9 @@ class RagPipeline:
         
     def make_embeddings(self,batch_size:int=32,chunks:list=None,
                         embedding_model:str=None):
-        # Load embedding model
-        self.embedder = SentenceTransformer(embedding_model)
+        # Load embedding model if specified, otherwise keep default
+        if embedding_model:
+            self.embedder = SentenceTransformer(embedding_model)
         #prepare the embeddings from the chunk
         self.embeddings=[]
         #check is chunks provided

@@ -9,7 +9,7 @@ global avilable_collections
 avilable_collections = {} #dictionary of collection name to description
 
 ## methods ##
-def data_injestion(pdf_path: str = None, pdf_url: str = None, text_content: str = None,
+async def data_injestion(pdf_path: str = None, pdf_url: str = None, text_content: str = None,
                    collection_name: str = "default_collection", description: str = "",
                    chunks=None, chunksize: int = 500, chunk_overlap: int = 50, batch_size: int = 32,
                    embedding_model: str = None, db_path: str = None, append: bool = True):
@@ -44,16 +44,16 @@ def data_injestion(pdf_path: str = None, pdf_url: str = None, text_content: str 
     rag_model.save_embeddings(collection_name=collection_name, db_path=db_path, append=append)
     print(f"Data Ingestion complete: {len(rag_model.chunks)} chunks saved to '{collection_name}'.")
 
-def query_engine(query,collection_name="default_collection",pretty_print=True,
+async def query_engine(query,collection_name="default_collection",pretty_print=True,
                  n_results=5,db_path=None):
     rag_model.chunks_from_text(text_content=query)
     rag_model.make_embeddings()
     rag_model.client = chromadb.PersistentClient(path=db_path) if db_path else chromadb.Client()
     collection = rag_model.client.get_collection(name=collection_name)
     results = collection.query(query_embeddings=rag_model.embeddings,n_results=n_results)
-    return _clean_documents_result(results) if pretty_print else results
+    return await _clean_documents_result(results) if pretty_print else results
 
-def clean_text_response(text: str) -> str:
+async def clean_text_response(text: str) -> str:
     if not text or not isinstance(text, str):
         return ""
     text = unicodedata.normalize("NFKC", text)
@@ -67,7 +67,7 @@ def clean_text_response(text: str) -> str:
     text = text.strip()
     return text
 
-def _clean_documents_result(result_dict: dict) -> list[str]:
+async def _clean_documents_result(result_dict: dict) -> list[str]:
     docs = []
     if "documents" in result_dict and result_dict["documents"]:
         for doc_list in result_dict["documents"]:
@@ -75,8 +75,8 @@ def _clean_documents_result(result_dict: dict) -> list[str]:
                 cleaned = clean_text_response(doc)
                 if cleaned:
                     docs.append(cleaned)
-    return docs
+    return await docs
 
     
-def delete_data(rag_model,collection_name,db_path):
+async def delete_data(rag_model,collection_name,db_path):
         rag_model.delete_data(collection_name=collection_name,db_path=db_path)
