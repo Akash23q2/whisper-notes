@@ -72,10 +72,10 @@ async def _clean_documents_result(result_dict: dict) -> list[str]:
     if "documents" in result_dict and result_dict["documents"]:
         for doc_list in result_dict["documents"]:
             for doc in doc_list:
-                cleaned = clean_text_response(doc)
+                cleaned = await clean_text_response(doc)
                 if cleaned:
                     docs.append(cleaned)
-    return await docs
+    return docs
 
     
 async def delete_data(rag_model,collection_name,db_path):

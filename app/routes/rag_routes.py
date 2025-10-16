@@ -37,14 +37,14 @@ async def add_document(
     try:
         if text:
             logger.info(f"Adding text document to collection: {collection_name}")
-            rag_model=data_injestion(text_content=text, collection_name=collection_name,description=description)
+            await data_injestion(text_content=text, collection_name=collection_name,description=description)
         elif pdf_url:
             logger.info(f"Adding PDF URL to collection: {collection_name}")
-            rag_model=data_injestion(pdf_url=pdf_url, collection_name=collection_name,description=description)
+            await data_injestion(pdf_url=pdf_url, collection_name=collection_name,description=description)
         elif file:
             logger.info(f"Adding file '{file.filename}' to collection: {collection_name}")
             await file.seek(0)
-            rag_model=data_injestion(pdf_path=file.file, collection_name=collection_name,description=description)
+            await data_injestion(pdf_path=file.file, collection_name=collection_name,description=description)
 
         return {"message": "Document added and embedded successfully."}
 
@@ -64,7 +64,7 @@ async def search_documents(request: SearchRequest):
     """
     try:
         logger.info(f"Searching '{request.collection_name}' for: '{request.query}'")
-        search_results = query_engine(
+        search_results = await query_engine(
             query=request.query,
             collection_name=request.collection_name,
             n_results=request.k

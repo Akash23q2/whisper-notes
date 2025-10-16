@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext,ModelMessage
 from datetime import datetime
 from app.schemas.agent_schema import AgentState, NotesState, TeachState, GameState, AgentMode,SummaryState
-from app.services.rag_service import avilable_collections, RagPipeline, data_injestion
+from app.services.rag_service import avilable_collections, query_engine, data_injestion
 from ddgs import DDGS
 import chromadb
 import os
@@ -16,9 +16,6 @@ import asyncio
 
 load_dotenv()
 GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
-
-## Initialize RAG Pipeline ##
-rag_pipeline = RagPipeline()
 
 ## Initialize AI agent ##
 from pydantic_ai.models.google import GoogleModel
@@ -117,12 +114,11 @@ async def retrieveFromEmbeddings(
 ) -> str:
     '''find relevant information from avilable memory content/embeddings'''
     try:
-        if db_path:
-            rag_pipeline.client = chromadb.PersistentClient(path=db_path)
-        results = await rag_pipeline.retrieve(
+        results = await query_engine(
             collection_name=collection_name,
             query=query,
-            n_results=n_results
+            n_results=n_results,
+            db_path=db_path
         )
         formatted_results = "\n\n---\n\n".join(results)
         return f"Retrieved {len(results)} relevant chunks:\n\n{formatted_results}"
